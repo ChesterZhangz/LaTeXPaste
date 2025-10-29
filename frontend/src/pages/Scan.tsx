@@ -5,6 +5,7 @@ import { apiService } from '../services/api';
 import PDFUploader from '../components/PDFUploader';
 import MarkdownDisplay from '../components/MarkdownDisplay';
 import ThemeToggle from '../components/ThemeToggle';
+import { useDocumentTitle, TitleState } from '../hooks/useDocumentTitle';
 
 interface ScanState {
   isUploading: boolean;
@@ -29,6 +30,19 @@ const Scan: React.FC = () => {
     error: undefined,
     fileName: null,
   });
+
+  // 动态标题状态
+  const getTitleState = (): TitleState => {
+    if (scanState.isUploading) return 'loading';
+    if (scanState.isScanning) return 'scanning';
+    if (scanState.status === 'processing') return 'processing';
+    if (scanState.status === 'completed') return 'completed';
+    if (scanState.error) return 'error';
+    return 'default';
+  };
+
+  // 使用动态标题
+  useDocumentTitle(getTitleState(), scanState.fileName || undefined);
 
   // 轮询扫描状态
   useEffect(() => {

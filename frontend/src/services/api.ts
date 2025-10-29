@@ -6,7 +6,7 @@ class ApiService {
 
   constructor() {
     this.api = axios.create({
-      baseURL: (import.meta as any).env?.VITE_API_URL || 'http://localhost:3001/api',
+      baseURL: (import.meta as any).env?.VITE_API_BASE_URL || 'https://tool.mareate.com/api',
       timeout: 30000,
       headers: {
         'Content-Type': 'application/json',

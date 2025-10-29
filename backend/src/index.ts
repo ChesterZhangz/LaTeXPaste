@@ -28,7 +28,10 @@ app.use(helmet({
 
 // CORS配置
 app.use(cors({
-  origin: config.frontendUrl,
+  origin: [
+    'http://localhost:5173',
+    'https://tool.mareate.com'
+  ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']

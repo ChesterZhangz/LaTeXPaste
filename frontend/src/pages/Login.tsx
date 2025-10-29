@@ -3,6 +3,7 @@ import { Navigate } from 'react-router-dom';
 import { Eye, EyeOff, LogIn, AlertCircle } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 import ThemeToggle from '../components/ThemeToggle';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -10,6 +11,9 @@ const Login: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   
   const { login, isAuthenticated, isLoading, error, clearError } = useAuthStore();
+
+  // 设置登录页面标题
+  useDocumentTitle(isLoading ? 'loading' : 'default');
 
   // 如果已经登录，重定向到扫描页面
   if (isAuthenticated) {
