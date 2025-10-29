@@ -45,7 +45,7 @@ const batchUpload = multer({
 /**
  * 上传文件并开始扫描
  */
-router.post('/upload', authMiddleware, upload.single('file'), async (req: any, res: Response) => {
+router.post('/upload', /* authMiddleware, */ upload.single('file'), async (req: any, res: Response) => {
   try {
     if (!req.file) {
       res.status(400).json({
@@ -90,7 +90,7 @@ router.post('/upload', authMiddleware, upload.single('file'), async (req: any, r
 /**
  * 获取扫描状态
  */
-router.get('/status/:scanId', authMiddleware, async (req: any, res: Response) => {
+router.get('/status/:scanId', /* authMiddleware, */ async (req: any, res: Response) => {
   try {
     const { scanId } = req.params;
 
@@ -127,7 +127,7 @@ router.get('/status/:scanId', authMiddleware, async (req: any, res: Response) =>
 /**
  * 获取扫描结果
  */
-router.get('/result/:scanId', authMiddleware, async (req: any, res: Response) => {
+router.get('/result/:scanId', /* authMiddleware, */ async (req: any, res: Response) => {
   try {
     const { scanId } = req.params;
 
@@ -183,7 +183,7 @@ router.get('/result/:scanId', authMiddleware, async (req: any, res: Response) =>
 /**
  * 批量上传文件并开始扫描
  */
-router.post('/batch-upload', authMiddleware, batchUpload.array('files', 10), async (req: any, res: Response) => {
+router.post('/batch-upload', /* authMiddleware, */ batchUpload.array('files', 10), async (req: any, res: Response) => {
   try {
     const files = req.files;
     
@@ -244,7 +244,7 @@ router.post('/batch-upload', authMiddleware, batchUpload.array('files', 10), asy
 /**
  * 获取批量任务状态
  */
-router.get('/batch-status/:batchId', authMiddleware, async (req: any, res: Response) => {
+router.get('/batch-status/:batchId', /* authMiddleware, */ async (req: any, res: Response) => {
   try {
     const { batchId } = req.params;
 
@@ -274,7 +274,7 @@ router.get('/batch-status/:batchId', authMiddleware, async (req: any, res: Respo
 /**
  * 获取批量任务结果
  */
-router.get('/batch-results/:batchId', authMiddleware, async (req: any, res: Response) => {
+router.get('/batch-results/:batchId', /* authMiddleware, */ async (req: any, res: Response) => {
   try {
     const { batchId } = req.params;
 
@@ -304,7 +304,7 @@ router.get('/batch-results/:batchId', authMiddleware, async (req: any, res: Resp
 /**
  * 获取原始文件
  */
-router.get('/original-file/:batchId/:fileId', authMiddleware, async (req: any, res: Response) => {
+router.get('/original-file/:batchId/:fileId', /* authMiddleware, */ async (req: any, res: Response) => {
   try {
     const { batchId, fileId } = req.params;
     const userId = req.user.id;
