@@ -1,5 +1,5 @@
 import axios, { AxiosInstance, AxiosResponse } from 'axios';
-import { LoginRequest, LoginResponse, User, ScanTask, ScanResult, ApiResponse } from '../types';
+import { LoginRequest, LoginResponse, User, ScanTask, ScanResult, ApiResponse, BatchUploadResponse, BatchStatusResponse, BatchResultsResponse } from '../types';
 
 class ApiService {
   private api: AxiosInstance;
@@ -90,6 +90,41 @@ class ApiService {
   async getScanTasks(): Promise<ApiResponse<{ tasks: ScanTask[] }>> {
     const response = await this.api.get<ApiResponse<{ tasks: ScanTask[] }>>('/scan/tasks');
     return response.data;
+  }
+
+  // 批量扫描相关
+  async uploadBatchFiles(files: File[]): Promise<BatchUploadResponse> {
+    const formData = new FormData();
+    files.forEach(file => {
+      formData.append('files', file);
+    });
+
+    const response = await this.api.post<BatchUploadResponse>(
+      '/scan/batch-upload',
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      }
+    );
+    return response.data;
+  }
+
+  async getBatchStatus(batchId: string): Promise<BatchStatusResponse> {
+    const response = await this.api.get<BatchStatusResponse>(`/scan/batch-status/${batchId}`);
+    return response.data;
+  }
+
+  async getBatchResults(batchId: string): Promise<BatchResultsResponse> {
+    const response = await this.api.get<BatchResultsResponse>(`/scan/batch-results/${batchId}`);
+    return response.data;
+  }
+
+  // 获取原始文件URL
+  getOriginalFileUrl(batchId: string, fileId: string): string {
+    const baseURL = this.api.defaults.baseURL;
+    return `${baseURL}/scan/original-file/${batchId}/${fileId}`;
   }
 }
 

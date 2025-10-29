@@ -2,6 +2,23 @@
 @tailwind components;
 @tailwind utilities;
 
+/* 中文字体定义 */
+@font-face {
+  font-family: 'WenYuanSerifSC';
+  src: url('/fonts/WenYuanSerifSC-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'WenYuanSerifSC';
+  src: url('/fonts/WenYuanSerifSC-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
 @layer base {
   html {
     font-family: 'Inter', system-ui, sans-serif;
@@ -99,6 +116,7 @@
   @apply bg-gray-400;
 }
 
+
 /* 动画 */
 @keyframes fadeIn {
   from {
@@ -127,6 +145,151 @@ pre {
 
 code {
   @apply bg-gray-100 dark:bg-gray-700 px-1 py-0.5 rounded text-sm font-mono transition-colors duration-300;
+}
+
+/* LaTeX预览区域字体设置 - 只对中文文本应用字体，保持数学公式原字体 */
+.prose {
+  font-family: 'WenYuanSerifSC', 'Times New Roman', 'Times', serif;
+}
+
+.prose h1,
+.prose h2,
+.prose h3,
+.prose h4,
+.prose h5,
+.prose h6 {
+  font-family: 'WenYuanSerifSC', 'Times New Roman', 'Times', serif;
+  font-weight: 700;
+}
+
+.prose p,
+.prose li,
+.prose blockquote {
+  font-family: 'WenYuanSerifSC', 'Times New Roman', 'Times', serif;
+  font-weight: 400;
+}
+
+/* 保持KaTeX数学公式使用默认字体，不要覆盖 */
+.katex {
+  font-family: KaTeX_Main, "Times New Roman", serif !important;
+}
+
+.katex .mord {
+  font-family: KaTeX_Main, "Times New Roman", serif !important;
+}
+
+/* 确保数学公式内的文本也使用KaTeX字体 */
+.katex .mord,
+.katex .mrel,
+.katex .mbin,
+.katex .mopen,
+.katex .mclose,
+.katex .mpunct,
+.katex .mord,
+.katex .mrel,
+.katex .mbin,
+.katex .mopen,
+.katex .mclose,
+.katex .mpunct {
+  font-family: KaTeX_Main, "Times New Roman", serif !important;
+}
+
+/* LaTeX tasks环境样式 - 模拟真实LaTeX渲染 */
+.tasks-container {
+  display: grid;
+  gap: 0.5rem;
+  margin: 1rem 0;
+  font-family: 'WenYuanSerifSC', 'Times New Roman', 'Times', serif;
+}
+
+.tasks-container[data-columns="1"] {
+  grid-template-columns: 1fr;
+}
+
+.tasks-container[data-columns="2"] {
+  grid-template-columns: 1fr 1fr;
+}
+
+.tasks-container[data-columns="3"] {
+  grid-template-columns: 1fr 1fr 1fr;
+}
+
+.tasks-container[data-columns="4"] {
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+}
+
+.tasks-container[data-columns="5"] {
+  grid-template-columns: 1fr 1fr 1fr 1fr 1fr;
+}
+
+.tasks-container[data-columns="6"] {
+  grid-template-columns: 1fr 1fr 1fr 1fr 1fr 1fr;
+}
+
+/* 选项样式 - 支持tasks容器内的段落 */
+.tasks-container p {
+  margin: 0.5rem 0;
+  padding: 0.5rem;
+  border: 1px solid transparent;
+  border-radius: 0.25rem;
+  transition: background-color 0.2s ease;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.tasks-container p:hover {
+  background-color: rgba(59, 130, 246, 0.05);
+}
+
+.tasks-container p strong {
+  font-weight: 600;
+  color: #374151;
+  flex-shrink: 0;
+  min-width: 1.5rem;
+}
+
+.dark .tasks-container p strong {
+  color: #d1d5db;
+}
+
+.tasks-container p:not(:has(strong)) {
+  flex: 1;
+  line-height: 1.5;
+}
+
+/* 确保tasks容器中的LaTeX正确渲染 */
+.tasks-container .katex {
+  font-size: 1em;
+}
+
+.tasks-container .katex-display {
+  margin: 0;
+  text-align: left;
+}
+
+/* 暗色模式下的tasks样式 */
+.dark .tasks-container p:hover {
+  background-color: rgba(59, 130, 246, 0.1);
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .tasks-container[data-columns="4"],
+  .tasks-container[data-columns="5"],
+  .tasks-container[data-columns="6"] {
+    grid-template-columns: 1fr 1fr;
+  }
+  
+  .tasks-container[data-columns="3"] {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .tasks-container {
+    grid-template-columns: 1fr !important;
+  }
 }
 
 pre code {
@@ -165,4 +328,245 @@ pre code {
 /* 输入框聚焦效果 */
 .input-focus {
   @apply transition-colors duration-200 focus:ring-2 focus:ring-primary-500 focus:border-primary-500;
+}
+
+/* 文件标签页样式 */
+.file-tabs {
+  @apply -mb-px flex space-x-8 overflow-x-auto;
+}
+
+.file-tab {
+  @apply flex items-center space-x-2 py-2 px-1 border-b-2 font-medium text-sm whitespace-nowrap transition-colors duration-200;
+}
+
+.file-tab.active {
+  @apply border-blue-500 text-blue-600 dark:text-blue-400;
+}
+
+.file-tab:not(.active) {
+  @apply border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600;
+}
+
+/* 模式切换按钮组样式 */
+.mode-toggle-group {
+  @apply flex space-x-2;
+}
+
+.mode-toggle-btn {
+  @apply px-3 py-1.5 text-sm font-medium rounded-md transition-colors duration-200;
+}
+
+.mode-toggle-btn.active {
+  @apply bg-blue-600 text-white;
+}
+
+.mode-toggle-btn:not(.active) {
+  @apply bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600;
+}
+
+/* CodeMirror编辑器样式覆盖 */
+.cm-editor {
+  @apply text-sm;
+}
+
+.cm-editor .cm-content {
+  @apply font-mono;
+}
+
+.cm-editor .cm-focused {
+  @apply outline-none;
+}
+
+/* 暗色模式下的CodeMirror */
+.dark .cm-editor {
+  @apply bg-gray-800 text-gray-100;
+}
+
+.dark .cm-editor .cm-content {
+  @apply text-gray-100;
+}
+
+.dark .cm-editor .cm-gutters {
+  @apply bg-gray-800 border-r border-gray-700;
+}
+
+.dark .cm-editor .cm-lineNumbers .cm-gutterElement {
+  @apply text-gray-400;
+}
+
+.dark .cm-editor .cm-activeLine {
+  @apply bg-gray-700;
+}
+
+.dark .cm-editor .cm-selectionBackground {
+  @apply bg-blue-600 bg-opacity-30;
+}
+
+/* 编辑模式分栏样式 */
+.edit-mode-container {
+  @apply grid grid-cols-1 lg:grid-cols-2 gap-4 h-96;
+}
+
+.edit-panel {
+  @apply border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden flex flex-col;
+}
+
+.edit-panel-header {
+  @apply bg-gray-50 dark:bg-gray-700 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-gray-600 flex-shrink-0;
+}
+
+.edit-panel-content {
+  @apply flex-1 overflow-hidden;
+}
+
+.preview-panel {
+  @apply border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden flex flex-col;
+}
+
+.preview-panel-header {
+  @apply bg-gray-50 dark:bg-gray-700 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-gray-600 flex-shrink-0;
+}
+
+.preview-panel-content {
+  @apply p-4 prose max-w-none flex-1 overflow-y-auto;
+}
+
+.dark .preview-panel-content {
+  @apply prose-invert;
+}
+
+/* CodeMirror编辑器滚动样式 */
+.cm-editor {
+  @apply text-sm overflow-auto;
+}
+
+.cm-scroller {
+  @apply overflow-auto;
+}
+
+/* LaTeX语法高亮样式 */
+.cm-latex-math {
+  color: #d73a49 !important;
+  font-weight: bold !important;
+  background-color: rgba(215, 58, 73, 0.1) !important;
+  border-radius: 2px !important;
+}
+
+.cm-latex-inline {
+  color: #6f42c1 !important;
+  font-weight: bold !important;
+  background-color: rgba(111, 66, 193, 0.1) !important;
+  border-radius: 2px !important;
+}
+
+.cm-latex-command {
+  color: #e36209 !important;
+  font-weight: bold !important;
+  background-color: rgba(227, 98, 9, 0.1) !important;
+  border-radius: 2px !important;
+}
+
+/* 暗色模式下的LaTeX高亮 */
+.dark .cm-latex-math {
+  color: #ff6b6b !important;
+  background-color: rgba(255, 107, 107, 0.1) !important;
+}
+
+.dark .cm-latex-inline {
+  color: #a78bfa !important;
+  background-color: rgba(167, 139, 250, 0.1) !important;
+}
+
+.dark .cm-latex-command {
+  color: #ffa726 !important;
+  background-color: rgba(255, 167, 38, 0.1) !important;
+}
+
+/* 原始文件查看器模态框样式 */
+.modal-overlay {
+  @apply fixed inset-0 z-50 overflow-y-auto;
+}
+
+.modal-backdrop {
+  @apply fixed inset-0 bg-black bg-opacity-50 transition-opacity;
+}
+
+.modal-container {
+  @apply flex min-h-full items-center justify-center p-4;
+}
+
+.modal-content {
+  @apply relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-6xl w-full max-h-[90vh] overflow-hidden;
+}
+
+.modal-header {
+  @apply flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700;
+}
+
+.modal-body {
+  @apply p-4 overflow-y-auto max-h-[calc(90vh-80px)];
+}
+
+/* PDF查看器样式 */
+.pdf-viewer {
+  @apply space-y-4;
+}
+
+.pdf-controls {
+  @apply flex items-center justify-center space-x-4;
+}
+
+.pdf-control-btn {
+  @apply px-3 py-1 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors;
+}
+
+.pdf-page-info {
+  @apply text-sm text-gray-600 dark:text-gray-400;
+}
+
+.pdf-page {
+  @apply flex justify-center;
+}
+
+/* 图片查看器样式 */
+.image-viewer {
+  @apply flex justify-center;
+}
+
+.image-viewer img {
+  @apply max-w-full max-h-[80vh] object-contain rounded-lg shadow-lg;
+}
+
+/* 加载状态样式 */
+.loading-container {
+  @apply flex items-center justify-center h-96;
+}
+
+.loading-spinner {
+  @apply w-8 h-8 animate-spin text-blue-600;
+}
+
+.loading-text {
+  @apply ml-2 text-gray-600 dark:text-gray-400;
+}
+
+/* 错误状态样式 */
+.error-container {
+  @apply flex items-center justify-center h-96;
+}
+
+.error-content {
+  @apply text-center;
+}
+
+.error-icon {
+  @apply w-8 h-8 text-red-500 mx-auto mb-2;
+}
+
+.error-text {
+  @apply text-red-600 dark:text-red-400;
+}
+
+.error-detail {
+  @apply text-sm text-gray-500 dark:text-gray-400;
 }

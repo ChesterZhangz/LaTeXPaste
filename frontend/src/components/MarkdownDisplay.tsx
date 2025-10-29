@@ -56,16 +56,83 @@ const MarkdownDisplay: React.FC<MarkdownDisplayProps> = ({ content, fileName }) 
       
       if (items.length > 0) {
         const itemList = items.map((itemContent: string, index: number) => {
-          return `${index + 1}. ${itemContent}`;
-        }).join('\n');
+          return `（${index + 1}）${itemContent}`; // 使用（1）、（2）格式
+        }).join('\n\n'); // 题目之间空一行，一行一个题目
         
         return itemList;
+      }
+      return match;
+    });
+
+    // 处理 \begin{tasks} 环境 - 转换为LaTeX样式选择题格式
+    processed = processed.replace(/\\begin\{tasks\}\((\d+)\)([\s\S]*?)\\end\{tasks\}/g, (match, columns, content) => {
+      // 提取 \task 内容
+      const taskPattern = /\\task\s*([\s\S]*?)(?=\\task|$)/g;
+      const tasks: string[] = [];
+      let taskMatch;
+      
+      while ((taskMatch = taskPattern.exec(content)) !== null) {
+        const taskContent = taskMatch[1].trim();
+        if (taskContent) {
+          tasks.push(taskContent);
+        }
+      }
+      
+      if (tasks.length > 0) {
+        const numColumns = parseInt(columns) || 1;
+        const taskList = tasks.map((taskContent: string, index: number) => {
+          const letter = String.fromCharCode(65 + index); // A, B, C, D...
+          return `**${letter}.** ${taskContent}`;
+        });
+        
+        // 创建Markdown格式的选项列表，使用HTML包装以应用样式
+        const markdownContent = taskList.join('\n\n');
+        return `<div class="tasks-container" data-columns="${numColumns}">\n\n${markdownContent}\n\n</div>`;
       }
       return match;
     });
     
     // 处理 \underlines 命令 - 转换为下划线
     processed = processed.replace(/\\underlines/g, '________');
+    
+    // 处理 \dotfill（\qquad \qquad）命令 - 转换为简单括号格式
+    processed = processed.replace(/\\dotfill（\\qquad \\qquad）/g, '（       ）');
+    processed = processed.replace(/\\dotfill\(\\qquad \\qquad\)/g, '（       ）');
+    
+    // 处理普通的 \item 命令 - 转换为Markdown编号列表
+    // 先保护所有特殊环境，避免在环境内部处理\item
+    const problemPlaceholder = '___PROBLEM_PLACEHOLDER___';
+    const tasksPlaceholder = '___TASKS_PLACEHOLDER___';
+    const problemMatches: string[] = [];
+    const tasksMatches: string[] = [];
+    
+    // 保护 \begin{problem} 环境
+    processed = processed.replace(/\\begin\{problem\}[\s\S]*?\\end\{problem\}/g, (match) => {
+      problemMatches.push(match);
+      return problemPlaceholder;
+    });
+    
+    // 保护 \begin{tasks} 环境
+    processed = processed.replace(/\\begin\{tasks\}\((\d+)\)[\s\S]*?\\end\{tasks\}/g, (match) => {
+      tasksMatches.push(match);
+      return tasksPlaceholder;
+    });
+    
+    // 全局计数 \item，确保连续编号
+    let globalItemCounter = 1;
+    processed = processed.replace(/\\item\s*([^\n]+)/g, (_, content) => {
+      return `${globalItemCounter++}. ${content.trim()}`;
+    });
+    
+    // 恢复 \begin{problem} 环境
+    processed = processed.replace(problemPlaceholder, () => {
+      return problemMatches.shift() || '';
+    });
+    
+    // 恢复 \begin{tasks} 环境
+    processed = processed.replace(tasksPlaceholder, () => {
+      return tasksMatches.shift() || '';
+    });
     
     return processed;
   };
@@ -140,7 +207,7 @@ const MarkdownDisplay: React.FC<MarkdownDisplayProps> = ({ content, fileName }) 
             <code>{content}</code>
           </pre>
         ) : (
-          <div className="p-6 prose prose-sm max-w-none dark:prose-invert">
+          <div className="p-6 prose prose-sm max-w-none dark:prose-invert max-h-96 overflow-y-auto" style={{ fontFamily: 'WenYuanSerifSC, Times New Roman, Times, serif' }}>
             <ReactMarkdown
               remarkPlugins={[remarkMath]}
               rehypePlugins={[rehypeRaw, rehypeKatex]}

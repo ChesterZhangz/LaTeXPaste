@@ -58,41 +58,208 @@ export class FormatConverter {
 
     // 移除学校信息等页眉
     cleaned = cleaned.replace(/^[^\n]*(?:实验中学|育才中学|师大|附中)[\s\S]*?\n/gm, '');
+    
+    // 移除公众号相关内容
+    cleaned = cleaned.replace(/公众号[^。]*。/g, '');
+    cleaned = cleaned.replace(/（B）公众号[^。]*。/g, '');
+    cleaned = cleaned.replace(/公众号[^。]*$/gm, '');
+    cleaned = cleaned.replace(/（B）公众号[^。]*$/gm, '');
+    
+    // 移除图片引用
+    cleaned = cleaned.replace(/图\s*$/gm, '');
+    cleaned = cleaned.replace(/图\s*公众号[^。]*$/gm, '');
+
+    // LaTeX命令替换
+    cleaned = this.replaceLatexCommands(cleaned);
 
     return cleaned.trim();
+  }
+
+  /**
+   * 替换LaTeX命令
+   */
+  private static replaceLatexCommands(content: string): string {
+    let processed = content;
+    
+    // 智能分数替换：只替换顶层的 \frac，保持嵌套和指数中的 \frac
+    processed = this.replaceTopLevelFrac(processed);
+    
+    // 将 \mathbf 替换为 \mathbb（粗体数学符号改为黑板粗体）
+    processed = processed.replace(/\\mathbf\b/g, '\\mathbb');
+    
+    return processed;
+  }
+
+  /**
+   * 智能计算每行选项数量
+   */
+  private static calculateOptimalColumns(options: string[]): number {
+    if (options.length === 0) return 1;
+    if (options.length === 1) return 1;
+    
+    // 计算平均选项长度（去除LaTeX命令后的纯文本长度）
+    const avgLength = options.reduce((sum, option) => {
+      // 移除LaTeX命令，只计算实际文本长度
+      const cleanText = option.replace(/\$[^$]*\$/g, '').replace(/\\[a-zA-Z]+\{[^}]*\}/g, '').trim();
+      return sum + cleanText.length;
+    }, 0) / options.length;
+    
+    // 根据平均长度和选项数量智能判断
+    if (avgLength > 30) {
+      // 长选项，每行1-2个
+      return options.length <= 2 ? options.length : 2;
+    } else if (avgLength > 15) {
+      // 中等长度选项，每行2-3个
+      return options.length <= 3 ? options.length : 3;
+    } else if (avgLength > 8) {
+      // 较短选项，每行3-4个
+      return options.length <= 4 ? options.length : 4;
+    } else {
+      // 很短选项，每行4-6个
+      return options.length <= 6 ? options.length : 6;
+    }
+  }
+
+  /**
+   * 智能替换顶层分数，保持嵌套分数和指数中的分数不变
+   */
+  private static replaceTopLevelFrac(content: string): string {
+    let processed = content;
+    
+    // 先保护指数中的分数
+    const exponentPattern = /\^\{[^}]*\\frac[^}]*\}/g;
+    const protectedExponents: string[] = [];
+    processed = processed.replace(exponentPattern, (match) => {
+      protectedExponents.push(match);
+      return `__PROTECTED_EXPONENT_${protectedExponents.length - 1}__`;
+    });
+    
+    // 再保护嵌套分数（在分数内部的分数）
+    const nestedFracPattern = /\\dfrac\{[^}]*\\frac[^}]*\}/g;
+    const protectedNested: string[] = [];
+    processed = processed.replace(nestedFracPattern, (match) => {
+      protectedNested.push(match);
+      return `__PROTECTED_NESTED_${protectedNested.length - 1}__`;
+    });
+    
+    // 现在替换剩余的 \frac 为 \dfrac
+    processed = processed.replace(/\\frac\b/g, '\\dfrac');
+    
+    // 恢复保护的指数
+    processed = processed.replace(/__PROTECTED_EXPONENT_(\d+)__/g, (_, index) => {
+      return protectedExponents[parseInt(index)] || '';
+    });
+    
+    // 恢复保护的嵌套分数
+    processed = processed.replace(/__PROTECTED_NESTED_(\d+)__/g, (_, index) => {
+      return protectedNested[parseInt(index)] || '';
+    });
+    
+    return processed;
   }
 
   /**
    * 按题号分割题目
    */
   private static splitQuestions(content: string): string[] {
-    // 首先检查是否有子问题编号（1）、（2）、（3）等
-    const hasSubQuestions = /[（(]\d+[）)]/.test(content);
-    
-    if (hasSubQuestions) {
-      // 如果有子问题，将整个内容作为一个题目处理
-      return [content.trim()];
-    }
-    
-    // 匹配题号：数字 + 点号/顿号
-    const questionPattern = /(?:^|\n)(\d+)[．\.\、]\s*/gm;
-    const parts = content.split(questionPattern);
-
     const questions: string[] = [];
     
-    // parts[0]是第一个题号之前的内容，跳过
-    // parts[1]是第一个题号，parts[2]是第一题内容
-    // parts[3]是第二个题号，parts[4]是第二题内容
-    for (let i = 1; i < parts.length; i += 2) {
-      const questionContent = parts[i + 1];
-      if (questionContent && questionContent.trim().length > 10) {
-        questions.push(questionContent.trim());
+    // 先保护LaTeX公式，避免在分割时被破坏
+    const latexPlaceholders: string[] = [];
+    let protectedContent = content;
+    
+    // 保护数学公式 $...$ 和 $$...$$
+    protectedContent = protectedContent.replace(/\$\$[\s\S]*?\$\$/g, (match) => {
+      latexPlaceholders.push(match);
+      return `__LATEX_BLOCK_${latexPlaceholders.length - 1}__`;
+    });
+    
+    protectedContent = protectedContent.replace(/\$[^$]*\$/g, (match) => {
+      latexPlaceholders.push(match);
+      return `__LATEX_INLINE_${latexPlaceholders.length - 1}__`;
+    });
+    
+    // 先按大题分割（一．、二．、三．等）
+    const sectionPattern = /(?:^|\n)([一二三四五六七八九十]+)．/gm;
+    const sections = protectedContent.split(sectionPattern);
+    
+    // 处理第一个大题之前的内容（通常包含选择题）
+    if (sections[0] && sections[0].trim().length > 10) {
+      const beforeFirstSection = sections[0].trim();
+      const questionPattern = /(?:^|\n)(\d+)[．\.\、]\s*/gm;
+      const questionParts = beforeFirstSection.split(questionPattern);
+      
+      // questionParts[0]是第一个小题之前的内容，跳过
+      // questionParts[1]是第一个小题号，questionParts[2]是第一小题内容
+      for (let j = 1; j < questionParts.length; j += 2) {
+        const questionContent = questionParts[j + 1];
+        if (questionContent && questionContent.trim().length > 10) {
+          // 恢复LaTeX公式
+          let restoredContent = questionContent.trim();
+          restoredContent = restoredContent.replace(/__LATEX_BLOCK_(\d+)__/g, (_, index) => {
+            return latexPlaceholders[parseInt(index)] || '';
+          });
+          restoredContent = restoredContent.replace(/__LATEX_INLINE_(\d+)__/g, (_, index) => {
+            return latexPlaceholders[parseInt(index)] || '';
+          });
+          
+          // 检查是否有子问题（1）、（2）、（3）等
+          const hasSubQuestions = /[（(]\d+[）)]/.test(restoredContent);
+          
+          if (hasSubQuestions) {
+            // 如果有子问题，需要problem环境
+            const converted = this.convertQuestionWithSubProblems(restoredContent);
+            questions.push(converted);
+          } else {
+            // 为每道题目添加 \item 前缀
+            questions.push(`\\item ${restoredContent}`);
+          }
+        }
+      }
+    }
+    
+    // 处理各个大题的内容
+    // sections[1]是第一个大题号，sections[2]是第一大题内容
+    for (let i = 1; i < sections.length; i += 2) {
+      const sectionContent = sections[i + 1];
+      if (sectionContent && sectionContent.trim().length > 10) {
+        // 在大题内容中按小题分割（数字 + 点号/顿号）
+        const questionPattern = /(?:^|\n)(\d+)[．\.\、]\s*/gm;
+        const questionParts = sectionContent.split(questionPattern);
+        
+        // questionParts[0]是第一个小题之前的内容，跳过
+        // questionParts[1]是第一个小题号，questionParts[2]是第一小题内容
+        for (let j = 1; j < questionParts.length; j += 2) {
+          const questionContent = questionParts[j + 1];
+          if (questionContent && questionContent.trim().length > 10) {
+            // 恢复LaTeX公式
+            let restoredContent = questionContent.trim();
+            restoredContent = restoredContent.replace(/__LATEX_BLOCK_(\d+)__/g, (_, index) => {
+              return latexPlaceholders[parseInt(index)] || '';
+            });
+            restoredContent = restoredContent.replace(/__LATEX_INLINE_(\d+)__/g, (_, index) => {
+              return latexPlaceholders[parseInt(index)] || '';
+            });
+            
+            // 检查是否有子问题（1）、（2）、（3）等
+            const hasSubQuestions = /[（(]\d+[）)]/.test(restoredContent);
+            
+            if (hasSubQuestions) {
+              // 如果有子问题，需要problem环境
+              const converted = this.convertQuestionWithSubProblems(restoredContent);
+              questions.push(converted);
+            } else {
+              // 为每道题目添加 \item 前缀
+              questions.push(`\\item ${restoredContent}`);
+            }
+          }
+        }
       }
     }
 
-    // 如果没有找到题目，尝试将整个内容作为一个题目处理
+    // 如果没有找到任何题目，尝试将整个内容作为一个题目处理
     if (questions.length === 0 && content.trim().length > 10) {
-      questions.push(content.trim());
+      questions.push(`\\item ${content.trim()}`);
     }
 
     return questions;
@@ -102,8 +269,11 @@ export class FormatConverter {
    * 转换单个题目
    */
   private static convertQuestion(content: string, questionNumber: number): string {
+    // 移除可能存在的 \item 前缀，因为我们在splitQuestions中已经添加了
+    let cleanContent = content.replace(/^\\item\s*/, '');
+    
     // 1. 检测题型
-    const type = this.detectQuestionType(content);
+    const type = this.detectQuestionType(cleanContent);
     console.log(`📝 题目 ${questionNumber}: 类型=${type}`);
 
     // 2. 根据题型处理内容
@@ -111,13 +281,18 @@ export class FormatConverter {
 
     if (type === 'choice' || type === 'multiple-choice') {
       // 选择题：转换为 \begin{tasks} 环境
-      converted = this.convertChoiceQuestion(content);
+      converted = this.convertChoiceQuestion(cleanContent);
     } else if (type === 'fill') {
       // 填空题：替换下划线为 \underlines
-      converted = this.convertFillQuestion(content);
+      converted = this.convertFillQuestion(cleanContent);
     } else {
       // 解答题：转换为 \begin{problem} 环境
-      converted = this.convertSolutionQuestion(content);
+      converted = this.convertSolutionQuestion(cleanContent);
+    }
+
+    // 3. 确保结果以 \item 开头
+    if (!converted.startsWith('\\item')) {
+      converted = `\\item ${converted}`;
     }
 
     return converted;
@@ -178,7 +353,7 @@ export class FormatConverter {
     }
 
     const firstOptionIndex = firstOptionMatch.index;
-    const stem = content.substring(0, firstOptionIndex).trim();
+    let stem = content.substring(0, firstOptionIndex).trim();
     const optionsText = content.substring(firstOptionIndex);
 
     // 提取所有选项
@@ -196,11 +371,18 @@ export class FormatConverter {
     console.log(`   ├─ 题干长度: ${stem.length}, 选项数: ${options.length}`);
 
     // 移除分值信息
-    const cleanStem = this.removeScoreInfo(stem);
+    stem = this.removeScoreInfo(stem);
 
+    // 将题干中的（）替换为\dotfill（\qquad \qquad）
+    stem = stem.replace(/（\s*）/g, '\\dotfill（\\qquad \\qquad）');
+    stem = stem.replace(/\(\s*\)/g, '\\dotfill（\\qquad \\qquad）');
+
+    // 智能判断每行选项数量
+    const optimalColumns = this.calculateOptimalColumns(options);
+    
     // 构建LaTeX格式
-    let latex = cleanStem + '\n\n';
-    latex += `\\begin{tasks}(${options.length})\n`;
+    let latex = stem + '\n\n';
+    latex += `\\begin{tasks}(${optimalColumns})\n`;
     
     options.forEach(option => {
       latex += `\\task ${option}\n`;
@@ -260,15 +442,48 @@ export class FormatConverter {
     converted = converted.replace(/^[（(（][^）)]*[高三|高二|高一|初中|小学][^）)]*[）)]\s*/g, '');
     converted = converted.replace(/^[（(（][^）)]*[上海|北京|广东|江苏|浙江|山东|河南|四川|湖北|湖南|安徽|福建|江西|辽宁|黑龙江|吉林|河北|山西|陕西|甘肃|青海|宁夏|新疆|西藏|内蒙古|广西|海南|贵州|云南|重庆|天津][^）)]*[）)]\s*/g, '');
 
-    // 分离题干和子问题
-    const { stem, subQuestions } = this.separateStemAndSubQuestions(converted);
+    // 检查是否有多道题目（通过检测多个子问题编号）
+    const subQuestionMatches = converted.match(/[（(]\d+[）)]/g);
+    const hasMultipleQuestions = subQuestionMatches && subQuestionMatches.length > 1;
 
-    if (subQuestions.length === 0) {
-      // 如果没有子问题，直接返回原内容
-      return converted;
+    if (hasMultipleQuestions) {
+      // 有多道题目，每道题都需要用\item处理
+      return this.convertMultipleSolutionQuestions(converted);
+    } else {
+      // 单道题目，检查是否有子问题
+      const { stem, subQuestions } = this.separateStemAndSubQuestions(converted);
+
+      if (subQuestions.length === 0) {
+        // 如果没有子问题，直接返回原内容
+        return converted;
+      }
+
+      // 如果有子问题，需要problem环境
+      let result = stem;
+      if (stem.trim()) {
+        result += '\n\n';
+      }
+      
+      result += '\\begin{problem}\n';
+      result += subQuestions.join('\n');
+      result += '\n\\end{problem}';
+
+      return result;
     }
+  }
 
-    // 构建最终格式：题干 + \begin{problem} + 子问题 + \end{problem}
+  /**
+   * 转换有子问题的题目
+   */
+  private static convertQuestionWithSubProblems(content: string): string {
+    // 分离题干和子问题
+    const { stem, subQuestions } = this.separateStemAndSubQuestions(content);
+    
+    if (subQuestions.length === 0) {
+      return `\\item ${content}`;
+    }
+    
+    // 构建problem环境，题干在外面，子问题在里面
     let result = stem;
     if (stem.trim()) {
       result += '\n\n';
@@ -277,8 +492,44 @@ export class FormatConverter {
     result += '\\begin{problem}\n';
     result += subQuestions.join('\n');
     result += '\n\\end{problem}';
-
+    
     return result;
+  }
+
+  /**
+   * 转换多道解答题
+   */
+  private static convertMultipleSolutionQuestions(content: string): string {
+    // 按子问题编号分割题目
+    const subQuestionPattern = /[（(](\d+)[）)]\s*(.+?)(?=[（(]\d+[）)]|$)/gs;
+    const questions: string[] = [];
+    
+    let match;
+    while ((match = subQuestionPattern.exec(content)) !== null) {
+      const questionContent = match[2].trim();
+      if (questionContent) {
+        questions.push(`\\item ${questionContent}`);
+      }
+    }
+
+    if (questions.length === 0) {
+      return content;
+    }
+
+    // 检查是否是多道独立题目（通过检测是否有题干部分）
+    const hasStem = content.includes('已知') || content.includes('设') || content.includes('若') || 
+                   content.includes('求') || content.includes('证明') || content.includes('求证');
+    
+    if (hasStem && questions.length > 1) {
+      // 多道独立题目，每道题单独处理，不需要problem环境
+      return questions.join('\n\n');
+    } else {
+      // 一道大题包含多个小问，需要problem环境
+      let result = '\\begin{problem}\n';
+      result += questions.join('\n');
+      result += '\n\\end{problem}';
+      return result;
+    }
   }
 
   /**
@@ -405,3 +656,4 @@ export class FormatConverter {
     return formatted.trim();
   }
 }
+

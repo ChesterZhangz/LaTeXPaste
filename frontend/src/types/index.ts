@@ -49,3 +49,69 @@ export interface ApiResponse<T = any> {
   data?: T;
   error?: string;
 }
+
+// 批量处理相关类型
+export interface FileTask {
+  fileId: string;
+  fileName: string;
+  fileSize: number;
+  fileType: string;
+  status: 'pending' | 'uploading' | 'mathpix-processing' | 'converting' | 'completed' | 'failed';
+  progress: number;
+  result?: string;
+  error?: string;
+  originalFilePath?: string;
+  createdAt: Date;
+  updatedAt: Date;
+  estimatedTimeRemaining?: number; // 预估剩余时间（秒）
+}
+
+export interface BatchTask {
+  batchId: string;
+  userId: string;
+  files: FileTask[];
+  overallProgress: number;
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+  totalFiles: number;
+  completedFiles: number;
+  failedFiles: number;
+  createdAt: Date;
+  updatedAt: Date;
+  estimatedTimeRemaining?: number; // 预估剩余时间（秒）
+}
+
+export interface BatchUploadRequest {
+  files: {
+    buffer: ArrayBuffer;
+    originalname: string;
+    mimetype: string;
+    size: number;
+  }[];
+}
+
+export interface BatchUploadResponse {
+  success: boolean;
+  message: string;
+  data: {
+    batchId: string;
+    totalFiles: number;
+  };
+}
+
+export interface BatchStatusResponse {
+  success: boolean;
+  data: BatchTask;
+}
+
+export interface BatchResultsResponse {
+  success: boolean;
+  data: {
+    batchId: string;
+    files: FileTask[];
+    overallProgress: number;
+    status: string;
+  };
+}
+
+// 视图模式类型
+export type ViewMode = 'raw' | 'edit' | 'preview';

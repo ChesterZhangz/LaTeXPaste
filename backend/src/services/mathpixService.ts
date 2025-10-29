@@ -3,6 +3,7 @@ import FormData from 'form-data';
 import { v4 as uuidv4 } from 'uuid';
 import { config } from '../config';
 import { FormatConverter } from './formatConverter';
+import { saveOriginalFile, cleanupBatchFiles } from '../utils/fileStorage';
 
 /**
  * Mathpix配置
@@ -32,9 +33,95 @@ export interface ScanTask {
 }
 
 /**
+ * 文件任务接口
+ */
+export interface FileTask {
+  fileId: string;
+  fileName: string;
+  fileSize: number;
+  fileType: string;
+  status: 'pending' | 'uploading' | 'mathpix-processing' | 'converting' | 'completed' | 'failed';
+  progress: number;
+  result?: string;
+  error?: string;
+  originalFilePath?: string;
+  createdAt: Date;
+  updatedAt: Date;
+  estimatedTimeRemaining?: number;
+}
+
+/**
+ * 批量任务接口
+ */
+export interface BatchTask {
+  batchId: string;
+  userId: string;
+  files: FileTask[];
+  overallProgress: number;
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+  totalFiles: number;
+  completedFiles: number;
+  failedFiles: number;
+  createdAt: Date;
+  updatedAt: Date;
+  estimatedTimeRemaining?: number;
+}
+
+/**
  * 扫描任务存储（内存存储，生产环境建议使用Redis）
  */
 const scanTasks = new Map<string, ScanTask>();
+
+/**
+ * 批量任务存储
+ */
+const batchTasks = new Map<string, BatchTask>();
+
+/**
+ * 处理队列管理
+ */
+class ProcessingQueue {
+  private queue: Array<() => Promise<void>> = [];
+  private processing = 0;
+  private maxConcurrent = 3; // 最大并发数
+
+  async add<T>(task: () => Promise<T>): Promise<T> {
+    return new Promise((resolve, reject) => {
+      this.queue.push(async () => {
+        try {
+          const result = await task();
+          resolve(result);
+        } catch (error) {
+          reject(error);
+        }
+      });
+      this.process();
+    });
+  }
+
+  private async process() {
+    if (this.processing >= this.maxConcurrent || this.queue.length === 0) {
+      return;
+    }
+
+    this.processing++;
+    const task = this.queue.shift();
+    if (task) {
+      try {
+        await task();
+      } catch (error) {
+        console.error('队列任务执行失败:', error);
+      } finally {
+        this.processing--;
+        this.process(); // 处理下一个任务
+      }
+    } else {
+      this.processing--;
+    }
+  }
+}
+
+const processingQueue = new ProcessingQueue();
 
 /**
  * Mathpix 扫描服务
@@ -424,6 +511,194 @@ export class MathpixService {
   }
 
   /**
+   * 创建批量扫描任务
+   */
+  static async createBatchTask(files: Array<{buffer: Buffer, originalname: string, mimetype: string, size: number}>, userId: string): Promise<string> {
+    const batchId = uuidv4();
+    const now = new Date();
+
+    // 创建文件任务并保存原始文件
+    const fileTasks: FileTask[] = files.map(file => {
+      const fileId = uuidv4();
+      const originalFilePath = saveOriginalFile(batchId, fileId, file.originalname, file.buffer);
+      
+      return {
+        fileId,
+        fileName: file.originalname,
+        fileSize: file.size,
+        fileType: file.mimetype,
+        status: 'pending',
+        progress: 0,
+        originalFilePath,
+        createdAt: now,
+        updatedAt: now
+      };
+    });
+
+    // 创建批量任务
+    const batchTask: BatchTask = {
+      batchId,
+      userId,
+      files: fileTasks,
+      overallProgress: 0,
+      status: 'pending',
+      totalFiles: files.length,
+      completedFiles: 0,
+      failedFiles: 0,
+      createdAt: now,
+      updatedAt: now
+    };
+
+    batchTasks.set(batchId, batchTask);
+
+    // 异步处理批量任务
+    this.processBatchTask(batchId, files).catch(error => {
+      console.error(`❌ 批量任务失败: ${batchId}`, error);
+      const task = batchTasks.get(batchId);
+      if (task) {
+        task.status = 'failed';
+        task.updatedAt = new Date();
+      }
+      // 清理文件
+      cleanupBatchFiles(batchId);
+    });
+
+    return batchId;
+  }
+
+  /**
+   * 处理批量任务
+   */
+  private static async processBatchTask(batchId: string, files: Array<{buffer: Buffer, originalname: string, mimetype: string, size: number}>): Promise<void> {
+    const batchTask = batchTasks.get(batchId);
+    if (!batchTask) {
+      throw new Error('批量任务不存在');
+    }
+
+    try {
+      console.log(`🔄 开始处理批量任务: ${batchId}, 文件数量: ${files.length}`);
+      
+      batchTask.status = 'processing';
+      batchTask.updatedAt = new Date();
+
+      // 为每个文件创建处理任务
+      const filePromises = files.map((file, index) => {
+        const fileTask = batchTask.files[index];
+        return processingQueue.add(async () => {
+          await this.processFileInBatch(batchId, fileTask.fileId, file.buffer, file.mimetype);
+        });
+      });
+
+      // 等待所有文件处理完成
+      await Promise.allSettled(filePromises);
+
+      // 更新批量任务状态
+      const completedFiles = batchTask.files.filter(f => f.status === 'completed').length;
+      const failedFiles = batchTask.files.filter(f => f.status === 'failed').length;
+      
+      batchTask.completedFiles = completedFiles;
+      batchTask.failedFiles = failedFiles;
+      batchTask.overallProgress = 100;
+      batchTask.status = completedFiles > 0 ? 'completed' : 'failed';
+      batchTask.updatedAt = new Date();
+
+      console.log(`✅ 批量任务完成: ${batchId}, 成功: ${completedFiles}, 失败: ${failedFiles}`);
+
+    } catch (error: any) {
+      console.error(`❌ 批量任务处理失败: ${batchId}`, error);
+      batchTask.status = 'failed';
+      batchTask.updatedAt = new Date();
+    }
+  }
+
+  /**
+   * 处理批量任务中的单个文件
+   */
+  private static async processFileInBatch(batchId: string, fileId: string, fileBuffer: Buffer, fileType: string): Promise<void> {
+    const batchTask = batchTasks.get(batchId);
+    if (!batchTask) return;
+
+    const fileTask = batchTask.files.find(f => f.fileId === fileId);
+    if (!fileTask) return;
+
+    try {
+      console.log(`🔄 开始处理文件: ${fileTask.fileName}`);
+
+      // 更新状态为上传中
+      fileTask.status = 'uploading';
+      fileTask.progress = 10;
+      fileTask.updatedAt = new Date();
+      this.updateBatchProgress(batchId);
+
+      // 上传文件到Mathpix
+      fileTask.status = 'mathpix-processing';
+      fileTask.progress = 30;
+      fileTask.updatedAt = new Date();
+      this.updateBatchProgress(batchId);
+
+      const markdown = await this.uploadFileToMathpix(fileBuffer, fileType);
+      
+      // 转换格式
+      fileTask.status = 'converting';
+      fileTask.progress = 70;
+      fileTask.updatedAt = new Date();
+      this.updateBatchProgress(batchId);
+
+      const convertedMarkdown = FormatConverter.convertToLatexFormat(markdown);
+      
+      // 完成
+      fileTask.status = 'completed';
+      fileTask.progress = 100;
+      fileTask.result = convertedMarkdown;
+      fileTask.updatedAt = new Date();
+      this.updateBatchProgress(batchId);
+
+      console.log(`✅ 文件处理完成: ${fileTask.fileName}`);
+
+    } catch (error: any) {
+      console.error(`❌ 文件处理失败: ${fileTask.fileName}`, error);
+      
+      fileTask.status = 'failed';
+      fileTask.error = error.message || '处理失败';
+      fileTask.updatedAt = new Date();
+      this.updateBatchProgress(batchId);
+    }
+  }
+
+  /**
+   * 更新批量任务进度
+   */
+  private static updateBatchProgress(batchId: string): void {
+    const batchTask = batchTasks.get(batchId);
+    if (!batchTask) return;
+
+    const totalProgress = batchTask.files.reduce((sum, file) => sum + file.progress, 0);
+    batchTask.overallProgress = Math.round(totalProgress / batchTask.totalFiles);
+    batchTask.updatedAt = new Date();
+  }
+
+  /**
+   * 获取批量任务状态
+   */
+  static getBatchTask(batchId: string): BatchTask | undefined {
+    return batchTasks.get(batchId);
+  }
+
+  /**
+   * 获取批量任务结果
+   */
+  static getBatchResults(batchId: string): { files: FileTask[], overallProgress: number, status: string } | null {
+    const batchTask = batchTasks.get(batchId);
+    if (!batchTask) return null;
+
+    return {
+      files: batchTask.files,
+      overallProgress: batchTask.overallProgress,
+      status: batchTask.status
+    };
+  }
+
+  /**
    * 清理过期的扫描任务（24小时）
    */
   static cleanupExpiredTasks(): void {
@@ -434,6 +709,15 @@ export class MathpixService {
       if (now.getTime() - task.updatedAt.getTime() > expiredTime) {
         scanTasks.delete(scanId);
         console.log(`🗑️ 清理过期扫描任务: ${scanId}`);
+      }
+    }
+
+    for (const [batchId, task] of batchTasks.entries()) {
+      if (now.getTime() - task.updatedAt.getTime() > expiredTime) {
+        // 清理文件
+        cleanupBatchFiles(batchId);
+        batchTasks.delete(batchId);
+        console.log(`🗑️ 清理过期批量任务: ${batchId}`);
       }
     }
   }
