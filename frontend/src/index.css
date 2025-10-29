@@ -1,0 +1,168 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    font-family: 'Inter', system-ui, sans-serif;
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+  
+  body {
+    @apply bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors duration-300;
+  }
+  
+  /* 暗色模式下的滚动条 */
+  .dark ::-webkit-scrollbar-track {
+    @apply bg-gray-800;
+  }
+  
+  .dark ::-webkit-scrollbar-thumb {
+    @apply bg-gray-600;
+  }
+  
+  .dark ::-webkit-scrollbar-thumb:hover {
+    @apply bg-gray-500;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  
+  .btn-primary {
+    @apply btn bg-primary-600 dark:bg-gray-600 text-white hover:bg-primary-700 dark:hover:bg-gray-700 focus:ring-primary-500;
+  }
+  
+  .btn-secondary {
+    @apply btn bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-600 focus:ring-gray-500;
+  }
+  
+  .btn-outline {
+    @apply btn border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 focus:ring-primary-500;
+  }
+  
+  .input {
+    @apply block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm placeholder-gray-400 dark:placeholder-gray-500 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 disabled:bg-gray-50 dark:disabled:bg-gray-700 disabled:text-gray-500 dark:disabled:text-gray-400 transition-all duration-200;
+  }
+  
+  .card {
+    @apply bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 transition-colors duration-200;
+  }
+  
+  .loading-spinner {
+    @apply animate-spin rounded-full h-6 w-6 border-2 border-gray-300 dark:border-gray-600 border-t-primary-600 dark:border-t-gray-400;
+  }
+  
+  /* 动画卡片 */
+  .card-animated {
+    @apply card animate-fade-in;
+  }
+  
+  /* 渐变背景 */
+  .gradient-bg {
+    @apply bg-gray-50 dark:bg-gray-900;
+  }
+  
+  /* 玻璃效果 */
+  .glass {
+    @apply bg-white dark:bg-gray-800;
+  }
+}
+
+/* KaTeX样式调整 */
+.katex {
+  font-size: 1.1em;
+}
+
+.katex-display {
+  margin: 1em 0;
+  text-align: center;
+}
+
+/* 自定义滚动条 */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-gray-100;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-gray-300 rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-gray-400;
+}
+
+/* 动画 */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+/* 拖拽区域样式 */
+.drag-active {
+  @apply border-primary-500 bg-primary-50;
+}
+
+/* 代码块样式 */
+pre {
+  @apply bg-gray-100 dark:bg-gray-700 rounded-lg p-4 overflow-x-auto text-sm transition-colors duration-300;
+}
+
+code {
+  @apply bg-gray-100 dark:bg-gray-700 px-1 py-0.5 rounded text-sm font-mono transition-colors duration-300;
+}
+
+pre code {
+  @apply bg-transparent p-0;
+}
+
+/* 暗色模式下的KaTeX样式 */
+.dark .katex {
+  color: #e5e7eb;
+}
+
+.dark .katex-display {
+  color: #e5e7eb;
+}
+
+/* 主题切换动画 */
+.theme-transition {
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
+
+/* 页面加载动画 */
+.page-enter {
+  animation: slideUp 0.5s ease-out;
+}
+
+/* 按钮悬停效果 */
+.btn-hover {
+  @apply transition-colors duration-200;
+}
+
+/* 卡片悬停效果 */
+.card-hover {
+  @apply transition-colors duration-200;
+}
+
+/* 输入框聚焦效果 */
+.input-focus {
+  @apply transition-colors duration-200 focus:ring-2 focus:ring-primary-500 focus:border-primary-500;
+}
