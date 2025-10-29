@@ -45,7 +45,7 @@ const batchUpload = multer({
 /**
  * 上传文件并开始扫描
  */
-router.post('/upload', /* authMiddleware, */ upload.single('file'), async (req: any, res: Response) => {
+router.post('/upload', authMiddleware, upload.single('file'), async (req: any, res: Response) => {
   try {
     if (!req.file) {
       res.status(400).json({
@@ -58,7 +58,7 @@ router.post('/upload', /* authMiddleware, */ upload.single('file'), async (req: 
     console.log(`📄 收到文件: ${req.file.originalname}, 类型: ${req.file.mimetype}, 大小: ${req.file.size} bytes`);
 
     // 创建扫描任务
-    const scanId = await MathpixService.createScanTask(req.file.buffer, 'temp-user-id', req.file.originalname, req.file.mimetype);
+    const scanId = await MathpixService.createScanTask(req.file.buffer, req.user._id, req.file.originalname, req.file.mimetype);
 
     res.json({
       success: true,
@@ -90,7 +90,7 @@ router.post('/upload', /* authMiddleware, */ upload.single('file'), async (req: 
 /**
  * 获取扫描状态
  */
-router.get('/status/:scanId', /* authMiddleware, */ async (req: any, res: Response) => {
+router.get('/status/:scanId', authMiddleware, async (req: any, res: Response) => {
   try {
     const { scanId } = req.params;
 
@@ -127,7 +127,7 @@ router.get('/status/:scanId', /* authMiddleware, */ async (req: any, res: Respon
 /**
  * 获取扫描结果
  */
-router.get('/result/:scanId', /* authMiddleware, */ async (req: any, res: Response) => {
+router.get('/result/:scanId', authMiddleware, async (req: any, res: Response) => {
   try {
     const { scanId } = req.params;
 
@@ -183,7 +183,7 @@ router.get('/result/:scanId', /* authMiddleware, */ async (req: any, res: Respon
 /**
  * 批量上传文件并开始扫描
  */
-router.post('/batch-upload', /* authMiddleware, */ batchUpload.array('files', 10), async (req: any, res: Response) => {
+router.post('/batch-upload', authMiddleware, batchUpload.array('files', 10), async (req: any, res: Response) => {
   try {
     const files = req.files;
     
@@ -214,7 +214,7 @@ router.post('/batch-upload', /* authMiddleware, */ batchUpload.array('files', 10
     }));
 
     // 创建批量扫描任务
-    const batchId = await MathpixService.createBatchTask(fileData, 'temp-user-id');
+    const batchId = await MathpixService.createBatchTask(fileData, req.user._id);
 
     res.json({
       success: true,
@@ -244,7 +244,7 @@ router.post('/batch-upload', /* authMiddleware, */ batchUpload.array('files', 10
 /**
  * 获取批量任务状态
  */
-router.get('/batch-status/:batchId', /* authMiddleware, */ async (req: any, res: Response) => {
+router.get('/batch-status/:batchId', authMiddleware, async (req: any, res: Response) => {
   try {
     const { batchId } = req.params;
 
@@ -274,7 +274,7 @@ router.get('/batch-status/:batchId', /* authMiddleware, */ async (req: any, res:
 /**
  * 获取批量任务结果
  */
-router.get('/batch-results/:batchId', /* authMiddleware, */ async (req: any, res: Response) => {
+router.get('/batch-results/:batchId', authMiddleware, async (req: any, res: Response) => {
   try {
     const { batchId } = req.params;
 
@@ -304,15 +304,14 @@ router.get('/batch-results/:batchId', /* authMiddleware, */ async (req: any, res
 /**
  * 获取原始文件
  */
-router.get('/original-file/:batchId/:fileId', /* authMiddleware, */ async (req: any, res: Response) => {
+router.get('/original-file/:batchId/:fileId', authMiddleware, async (req: any, res: Response) => {
   try {
     const { batchId, fileId } = req.params;
-    // 临时移除用户验证
-    // const userId = req.user.id;
+    const userId = req.user._id;
 
-    // 验证批量任务是否存在
+    // 验证批量任务是否属于当前用户
     const batchTask = MathpixService.getBatchTask(batchId);
-    if (!batchTask) {
+    if (!batchTask || batchTask.userId !== userId) {
       res.status(404).json({
         success: false,
         error: '文件不存在或无权访问'
