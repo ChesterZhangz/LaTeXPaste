@@ -7,6 +7,9 @@ export default defineConfig(({ mode }) => {
   // 加载环境变量
   const env = loadEnv(mode, process.cwd(), '')
   
+  // 确保生产环境使用正确的API URL
+  const apiBaseUrl = mode === 'production' ? 'https://tool.mareate.com/api' : 'http://localhost:3001/api'
+  
   return {
     plugins: [react()],
     resolve: {
@@ -33,9 +36,7 @@ export default defineConfig(({ mode }) => {
       }
     },
     define: {
-      'import.meta.env.VITE_API_BASE_URL': JSON.stringify(
-        mode === 'production' ? 'https://tool.mareate.com/api' : 'http://localhost:3001/api'
-      )
+      'import.meta.env.VITE_API_BASE_URL': JSON.stringify(apiBaseUrl)
     },
     envPrefix: 'VITE_'
   }
