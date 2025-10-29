@@ -76,9 +76,15 @@ ufw allow 3001
 
 # 创建部署目录
 log_info "创建部署目录..."
-mkdir -p /var/www/mathtools
+mkdir -p /var/www
 mkdir -p /var/log/pm2
 mkdir -p /var/log/nginx
+
+# 克隆项目代码
+log_info "克隆项目代码..."
+cd /var/www
+git clone https://github.com/ChesterZhangz/LaTeXPaste.git mathtools
+cd mathtools
 
 # 设置目录权限
 chown -R www-data:www-data /var/www/mathtools
@@ -88,14 +94,15 @@ chmod -R 755 /var/www/mathtools
 log_info "创建环境变量文件..."
 cat > /var/www/mathtools/.env << 'EOF'
 # 数据库配置
-SHARED_DATA_URI=mongodb://localhost:27017/sharedata
+SHARED_DATA_URI=mongodb+srv://admin:1S7D7FBLinscemfF@viquardsystem.x7qahuy.mongodb.net/shareddata?retryWrites=true&w=majority&appName=ViquardSystem
 
 # Mathpix API 配置
-MATHPIX_APP_ID=your_app_id
-MATHPIX_API_KEY=your_api_key
+MATHPIX_APP_ID=__b72c44_f78687
+MATHPIX_API_KEY=5ddfb0f6c42c072d2bb7cf5833953a35e16f6fd02bf9cad035b72f58ff19e7fa
 
 # JWT 配置
-USER_VIQUARD_JWT_SECRET=your_jwt_secret
+USER_VIQUARD_JWT_SECRET=KDSKDSdasme34k5jk32ikdssnsac.s.dfjfsdas@dasdakw291kdsmadmsdmfsfjnfmdacxas.es.re.jadnsaf
+
 
 # 服务器配置
 PORT=3001
@@ -182,52 +189,9 @@ log_warn "请手动执行以下命令配置SSL证书："
 echo "certbot --nginx -d tool.mareate.com"
 echo "certbot renew --dry-run"
 
-# 创建部署脚本
-log_info "创建部署脚本..."
-cat > /var/www/mathtools/deploy.sh << 'EOF'
-#!/bin/bash
-
-set -e
-
-echo "🚀 开始部署 Mathtools..."
-
-# 进入项目目录
-cd /var/www/mathtools
-
-# 拉取最新代码
-echo "📥 拉取最新代码..."
-git pull origin main
-
-# 安装后端依赖
-echo "📦 安装后端依赖..."
-cd backend
-npm install --production
-
-# 构建后端
-echo "🔨 构建后端..."
-npm run build
-
-# 安装前端依赖
-echo "📦 安装前端依赖..."
-cd ../frontend
-npm install
-
-# 构建前端
-echo "🔨 构建前端..."
-npm run build
-
-# 重启PM2服务
-echo "🔄 重启服务..."
-cd ..
-pm2 reload ecosystem.config.js
-
-# 重载Nginx
-echo "🔄 重载Nginx..."
-nginx -s reload
-
-echo "✅ 部署完成！"
-EOF
-
+# 复制部署脚本
+log_info "复制部署脚本..."
+cp deploy.sh /var/www/mathtools/
 chmod +x /var/www/mathtools/deploy.sh
 
 # 设置目录权限
@@ -238,7 +202,6 @@ log_info "✅ 服务器初始化完成！"
 log_info "📝 下一步："
 echo "1. 编辑 /var/www/mathtools/.env 文件，填入正确的配置信息"
 echo "2. 执行: certbot --nginx -d tool.mareate.com"
-echo "3. 将代码上传到 /var/www/mathtools 目录"
-echo "4. 执行: /var/www/mathtools/deploy.sh"
+echo "3. 执行: /var/www/mathtools/deploy.sh"
 
 log_info "🎉 Mathtools 服务器初始化完成！"

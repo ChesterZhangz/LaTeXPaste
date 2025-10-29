@@ -65,7 +65,11 @@ log_step "📥 拉取最新代码..."
 if [ -d ".git" ]; then
     git pull origin main
 else
-    log_warn "不是Git仓库，跳过代码拉取"
+    log_info "克隆项目代码..."
+    cd /var/www
+    rm -rf mathtools
+    git clone https://github.com/ChesterZhangz/LaTeXPaste.git mathtools
+    cd mathtools
 fi
 
 # 备份当前版本
