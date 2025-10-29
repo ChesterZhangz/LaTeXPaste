@@ -36,6 +36,7 @@ export default defineConfig(({ mode }) => {
       'import.meta.env.VITE_API_BASE_URL': JSON.stringify(
         mode === 'production' ? 'https://tool.mareate.com/api' : 'http://localhost:3001/api'
       )
-    }
+    },
+    envPrefix: 'VITE_'
   }
 })

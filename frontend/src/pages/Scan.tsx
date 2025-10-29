@@ -217,7 +217,7 @@ const Scan: React.FC = () => {
                   
                   <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
                     <div className="loading-spinner mr-2" />
-                    {scanState.status === 'pending' && '正在上传到Mathpix...'}
+                    {scanState.status === 'pending' && '正在上传...'}
                     {scanState.status === 'processing' && '正在识别数学公式...'}
                   </div>
                 </div>
