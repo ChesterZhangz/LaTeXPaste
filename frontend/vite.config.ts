@@ -7,8 +7,10 @@ export default defineConfig(({ mode }) => {
   // 加载环境变量
   const env = loadEnv(mode, process.cwd(), '')
   
-  // 确保生产环境使用正确的API URL
-  const apiBaseUrl = mode === 'production' ? 'https://tool.mareate.com/api' : 'http://localhost:3001/api'
+  // 从环境变量或默认值获取API URL
+  const apiBaseUrl = env.VITE_API_BASE_URL || (mode === 'production' ? 'https://tool.mareate.com/api' : 'http://localhost:3001/api')
+  
+  console.log(`🔧 Vite配置 - 模式: ${mode}, API URL: ${apiBaseUrl}`)
   
   return {
     plugins: [react()],
