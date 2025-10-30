@@ -2,16 +2,6 @@
 
 一个基于Mathpix API的数学公式扫描工具，支持PDF和图片文件上传，自动识别数学公式并转换为LaTeX格式。
 
-## 功能特性
-
-- 📄 支持PDF、PNG、JPG、JPEG文件上传
-- 🔍 基于Mathpix API的数学公式识别
-- 📝 自动转换为标准LaTeX格式
-- 🌙 支持暗色模式/亮色模式切换
-- 📋 支持粘贴上传（Ctrl+V/Cmd+V）
-- 🎨 简洁美观的用户界面
-- 📱 响应式设计
-
 ## 技术栈
 
 ### 后端
@@ -119,27 +109,6 @@ cd frontend
 npm run dev
 ```
 
-### 生产环境部署
-
-1. 构建项目
-```bash
-# 后端
-cd backend
-npm run build
-
-# 前端
-cd frontend
-npm run build
-```
-
-2. 使用部署脚本
-```bash
-# 在服务器上运行
-chmod +x setup.sh deploy.sh
-./setup.sh
-./deploy.sh
-```
-
 ## API 接口
 
 ### 认证
@@ -151,29 +120,7 @@ chmod +x setup.sh deploy.sh
 - `GET /api/scan/status/:scanId` - 查询扫描状态
 - `GET /api/scan/result/:scanId` - 获取扫描结果
 
-## 部署说明
-
-项目支持在Ubuntu 24.0服务器上部署，使用Nginx作为反向代理，PM2管理进程。
-
-### 服务器要求
-- Ubuntu 24.0
-- Node.js 18+
-- MongoDB
-- Nginx
-- PM2
-
-### 自动部署
-运行 `./deploy.sh` 脚本将自动完成以下操作：
-1. 安装依赖
-2. 构建项目
-3. 配置Nginx
-4. 启动服务
-5. 配置SSL证书
 
 ## 许可证
 
 MIT License
-
-## 贡献
-
-欢迎提交Issue和Pull Request来改进项目。
